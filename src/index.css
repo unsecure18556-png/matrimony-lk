@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Noto Sans Sinhala", "Noto Sans Tamil", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Fraunces", "Playfair Display", Georgia, serif;
+
+  /* Kandyan crimson */
+  --color-brand-50: #fdf3f4;
+  --color-brand-100: #fbe3e6;
+  --color-brand-200: #f6c6cd;
+  --color-brand-300: #ee9aa7;
+  --color-brand-400: #e06681;
+  --color-brand-500: #c93d60;
+  --color-brand-600: #a61e45;
+  --color-brand-700: #8a1739;
+  --color-brand-800: #70152f;
+  --color-brand-900: #55101f;
+  --color-brand-950: #340911;
+
+  /* temple gold */
+  --color-gold-50: #fdf8e9;
+  --color-gold-100: #faefc8;
+  --color-gold-200: #f4dd8f;
+  --color-gold-300: #ecc656;
+  --color-gold-400: #dfab2e;
+  --color-gold-500: #c58f1d;
+  --color-gold-600: #a06f17;
+  --color-gold-700: #7e5412;
+
+  --color-cream: #fbf6ef;
+  --color-ink: #2b1b20;
+}
+
+html, body { overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
+
+/* 16px inputs stop iOS Safari from zooming in when a field is focused */
+input, select, textarea { font-size: 16px; }
+@media (min-width: 768px) { input, select, textarea { font-size: inherit; } }
+
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.safe-top { padding-top: env(safe-area-inset-top, 0px); }
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.fade-up { animation: fade-up .35s ease both; }
+@media (prefers-reduced-motion: reduce) { .fade-up { animation: none; } }
