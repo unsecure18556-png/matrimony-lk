@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Noto Sans Sinhala", "Noto Sans Tamil", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Fraunces", "Playfair Display", Georgia, serif;
+
+  /* Palette: #F7C6D0  #E85D75  #B23A54  #FFF1E8  #3A1F2B */
+  --color-brand-50: #fff5f7;
+  --color-brand-100: #fde7ec;
+  --color-brand-200: #F7C6D0;
+  --color-brand-300: #f2a2b2;
+  --color-brand-400: #ed7f94;
+  --color-brand-500: #E85D75;
+  --color-brand-600: #B23A54;
+  --color-brand-700: #962f46;
+  --color-brand-800: #7a2639;
+  --color-brand-900: #5a1c2b;
+  --color-brand-950: #3A1F2B;
+
+  /* soft blush accents (kept under the old "gold" names) */
+  --color-gold-50: #fff9f5;
+  --color-gold-100: #FFF1E8;
+  --color-gold-200: #fbd9d6;
+  --color-gold-300: #F7C6D0;
+  --color-gold-400: #f2a2b2;
+  --color-gold-500: #E85D75;
+  --color-gold-600: #B23A54;
+  --color-gold-700: #8f2d43;
+
+  --color-cream: #FFF1E8;
+  --color-ink: #3A1F2B;
+}
+
+html { -webkit-tap-highlight-color: transparent; }
+/* One-finger scrolling only: no pinch-zoom or two-finger touch panning.
+   (Laptop trackpad scrolling uses wheel events and is not affected.)
+   Horizontal carousels are their own scroll containers, so they still swipe sideways. */
+html, body { touch-action: pan-y; }
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+/* clip (not hidden) never creates a scroll container, so wheel/trackpad scrolling stays native */
+#root { overflow-x: clip; }
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.01em; }
+
+/* 16px inputs stop iOS Safari from zooming in when a field is focused */
+input, select, textarea { font-size: 16px; }
+@media (min-width: 768px) { input, select, textarea { font-size: inherit; } }
+
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.safe-top { padding-top: env(safe-area-inset-top, 0px); }
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.fade-up { animation: fade-up .35s ease both; }
+@media (prefers-reduced-motion: reduce) { .fade-up { animation: none; } }
