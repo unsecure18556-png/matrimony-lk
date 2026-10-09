@@ -11,20 +11,63 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Pick the theme before anything paints (no white flash) -->
     <script>
       try {
-        var t = localStorage.getItem("theme") || "system";
+        var t = localStorage.getItem("theme");
+        if (t !== "dark" && t !== "light") t = "system";
         var dark = t === "dark" || (t === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
         document.documentElement.dataset.theme = dark ? "dark" : "light";
       } catch (e) {}
     </script>
+
+    <!-- Critical styles: the page is never plain white, even before the main CSS arrives -->
+    <style>
+      html { background: #FFF1E8; }
+      html[data-theme="dark"] { background: #140c10; color-scheme: dark; }
+      body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+      .boot { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: #B23A54; text-align: center; padding: 24px; }
+      html[data-theme="dark"] .boot { color: #f08aa0; }
+      .boot-spin { width: 38px; height: 38px; border-radius: 50%; border: 3px solid rgba(178,58,84,.2); border-top-color: #B23A54; animation: boot-spin .8s linear infinite; }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      .boot pre { max-width: 560px; white-space: pre-wrap; word-break: break-word; text-align: left; background: rgba(0,0,0,.06); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: inherit; }
+      .boot button { background: #B23A54; color: #fff; border: 0; border-radius: 12px; padding: 12px 22px; font-size: 16px; font-weight: 600; }
+    </style>
+
+    <!-- Fonts load in the background so a slow font server can never block the page -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" /></noscript>
+
+    <!-- Safety net: if the app fails to start, show WHY instead of a blank page -->
+    <script>
+      (function () {
+        var done = false;
+        function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
+        function fail(msg) {
+          var root = document.getElementById("root");
+          if (done || !root || root.getAttribute("data-ready")) return;
+          done = true;
+          root.innerHTML = '<div class="boot"><strong style="font-size:20px">The app could not start</strong>' +
+            '<p style="max-width:420px;margin:0;opacity:.85">Please reload. If it keeps happening, open this page in a private window, or send a screenshot of this message to support.</p>' +
+            '<pre>' + esc(msg) + '</pre><button onclick="location.reload()">Reload</button></div>';
+        }
+        window.addEventListener("error", function (e) {
+          var t = e && e.target;
+          if (t && t !== window && t.tagName !== "SCRIPT") return; // a font or image failing is not fatal
+          fail(t && t.src ? "Could not load " + t.src : (e && e.message) || "Unknown error");
+        }, true);
+        window.addEventListener("unhandledrejection", function (e) { fail((e.reason && e.reason.message) || e.reason || "Unknown error"); });
+        setTimeout(function () { fail("The app took too long to start. Your connection may be slow, or a file did not load (try a hard refresh)."); }, 15000);
+      })();
+    </script>
     <title>Matrimony LK</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="boot"><div class="boot-spin"></div><div>Loading...</div></div></div>
+    <noscript><div class="boot">Please turn on JavaScript to use this app.</div></noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

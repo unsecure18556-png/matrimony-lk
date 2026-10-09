@@ -37,7 +37,7 @@ export default function ProfileCardView({ card, sc, note, shortlisted, onToggleS
           </div>
         </Link>
         {card.face_verified && (
-          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-emerald-600/95 px-2 py-0.5 text-[11px] font-semibold text-white shadow">
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-emerald-700 px-2 py-0.5 text-[11px] font-semibold text-white shadow">
             <Icon name="check" size={11} strokeWidth={2.6} />Verified
           </span>
         )}

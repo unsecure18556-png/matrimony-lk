@@ -43,8 +43,8 @@ function DiscoverCard({ card, score, rel, onInterest, onAccept, onHide }: {
         {rel === "none" && <button className={`${btn} bg-brand-600 text-white`} onClick={onInterest}>Interest</button>}
         {rel === "sent" && <span className={`${btn} bg-stone-100 text-center text-stone-500`}>Interest sent</span>}
         {rel === "received" && <button className={`${btn} bg-brand-600 text-white`} onClick={onAccept}>Accept</button>}
-        {rel === "connected" && <Link to={`/messages/${card.id}`} className={`${btn} bg-emerald-600 text-center text-white`}>Matched · Chat</Link>}
-        {rel === "declined" && <span className={`${btn} bg-stone-100 text-center text-stone-400`}>Declined</span>}
+        {rel === "connected" && <Link to={`/messages/${card.id}`} className={`${btn} bg-emerald-700 text-center text-white`}>Matched · Chat</Link>}
+        {rel === "declined" && <span className={`${btn} bg-stone-100 text-center text-stone-500`}>Declined</span>}
         {rel !== "connected" && <button className={`${btn} bg-stone-100 text-stone-700`} onClick={onHide}>Not interested</button>}
       </div>
     </article>

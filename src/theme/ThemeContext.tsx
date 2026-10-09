@@ -11,7 +11,7 @@ const resolveTheme = (t: Theme): "light" | "dark" => (t === "system" ? (prefersD
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    try { return (localStorage.getItem(KEY) as Theme) || "system"; } catch { return "system"; }
+    try { const v = localStorage.getItem(KEY); return v === "light" || v === "dark" ? v : "system"; } catch { return "system"; }
   });
   const [resolved, setResolved] = useState<"light" | "dark">(() => resolveTheme(theme));
 

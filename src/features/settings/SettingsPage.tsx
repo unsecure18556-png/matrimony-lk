@@ -103,7 +103,7 @@ export default function SettingsPage() {
                   <Link key={r.label} to={r.to} className="flex items-center gap-4 border-b border-stone-100 px-4 py-3.5 last:border-0 active:bg-stone-100">
                     <Icon name={r.icon} size={22} className="text-ink" />
                     <span className="flex-1">{r.label}</span>
-                    <Icon name="chevronRight" size={18} className="text-stone-300" />
+                    <Icon name="chevronRight" size={18} className="text-stone-400" />
                   </Link>
                 ))}
               </div>

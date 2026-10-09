@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { getCards, type ProfileCard } from "../../services/cardService";
@@ -9,15 +9,20 @@ import {
 import { blockUser, getContact, reportUser, setShortlisted, shortlistIds } from "../../services/socialService";
 import { matchLabel, scoreMatch } from "../../services/matchService";
 import { fetchFeed, type Post } from "../../services/postService";
+import { fetchTray, type StoryGroup } from "../../services/storyService";
 import { input } from "../../components/ui/styles";
-import Icon from "../../components/ui/Icon";
+import Icon, { type IconName } from "../../components/ui/Icon";
 import ReportSheet from "../../components/ReportSheet";
 import MatchModal from "../../components/MatchModal";
+import StoryViewer from "../../components/stories/StoryViewer";
 import { useVerifyGate } from "../../components/VerifyGate";
 import { EmptyState, PageLoader } from "../../components/ui/Feedback";
 
-const round = "flex items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5 transition active:scale-90";
-const glass = "flex h-10 w-10 items-center justify-center rounded-full bg-white/85 text-ink shadow backdrop-blur";
+type Tab = "posts" | "photos" | "about";
+const btn = "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold transition active:scale-[.98]";
+const primary = `${btn} flex-1 bg-brand-600 text-white hover:bg-brand-700`;
+const secondary = `${btn} flex-1 bg-stone-200/80 text-ink hover:bg-stone-200`;
+const iconBtn = `${btn} w-11 shrink-0 bg-stone-200/80 text-ink hover:bg-stone-200`;
 
 export default function ProfileViewPage() {
   const { id } = useParams();
@@ -27,6 +32,9 @@ export default function ProfileViewPage() {
   const [p, setP] = useState<ProfileCard | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [morePosts, setMorePosts] = useState(false);
+  const [story, setStory] = useState<StoryGroup | null>(null);
+  const [viewStory, setViewStory] = useState(false);
   const [interests, setInterests] = useState<Interest[]>([]);
   const [saved, setSaved] = useState(false);
   const [phone, setPhone] = useState<string | null>(null);
@@ -35,9 +43,10 @@ export default function ProfileViewPage() {
   const [err, setErr] = useState("");
   const [note, setNote] = useState("");
   const [showNote, setShowNote] = useState(false);
+  const [tab, setTab] = useState<Tab>("posts");
   const [menu, setMenu] = useState(false);
   const [showReport, setShowReport] = useState(false);
-  const [readMore, setReadMore] = useState(false);
+  const [more, setMore] = useState(false);
   const [view, setView] = useState<number | null>(null);
   const [celebrate, setCelebrate] = useState(false);
 
@@ -51,7 +60,8 @@ export default function ProfileViewPage() {
     const rel = relationWith(ints, user.id, id);
     setPhone(rel.state === "connected" || id === user.id ? await getContact(id) : null);
     setState("ok");
-    fetchFeed(user.id, { userId: id, limit: 9 }).then((r) => setPosts(r.posts)).catch(() => {});
+    fetchFeed(user.id, { userId: id, limit: 30 }).then((r) => { setPosts(r.posts); setMorePosts(r.hasMore); }).catch(() => {});
+    fetchTray(user.id).then((gs) => setStory(gs.find((g) => g.userId === id) ?? null)).catch(() => {});
   }, [id, user]);
 
   useEffect(() => { load(); }, [load]);
@@ -67,18 +77,32 @@ export default function ProfileViewPage() {
   const match = me && !isMe ? scoreMatch(me, p) : null;
   const age = p.dob ? ageFromDob(p.dob) : null;
   const viewable = photos.filter((x) => x.url);
-  const lockedAll = photos.length > 0 && viewable.length === 0;
-  const place = [p.district, p.country_living].filter(Boolean).join(", ");
+  const connections = interests.filter((i) => i.status === "accepted").length;
   const about = p.about ?? "";
-  const long = about.length > 140;
+  const longBio = about.length > 150;
 
   const run = async (fn: () => Promise<unknown>, ok = "") => {
     setErr(""); setMsg("");
     try { await fn(); if (ok) setMsg(ok); await load(); } catch (e: any) { setErr(e.message); }
   };
+  const toggleSave = async () => { await setShortlisted(user.id, p.id, !saved); setSaved(!saved); };
+  const share = async () => {
+    const url = `${location.origin}/p/${p.id}`;
+    try { if (navigator.share) await navigator.share({ title: p.full_name, url }); else { await navigator.clipboard.writeText(url); setMsg("Profile link copied"); } } catch { /* cancelled */ }
+  };
+
+  const stats: [string | number, string, Tab | null][] = [
+    [`${posts.length}${morePosts ? "+" : ""}`, "Posts", "posts"],
+    [photos.length, "Photos", "photos"],
+    isMe ? [connections, "Matches", null] : [match ? `${match.score}%` : "-", "Match", "about"],
+  ];
+
+  const chips = [
+    p.height_cm ? `${p.height_cm} cm` : null, p.religion, p.ethnicity, p.education, p.marital_status, p.mother_tongue,
+  ].filter(Boolean) as string[];
 
   const groups: [string, [string, string | number | null][]][] = [
-    ["Basics", [["Height", p.height_cm ? `${p.height_cm} cm` : null], ["Marital status", p.marital_status], ["Living in", p.country_living]]],
+    ["Basics", [["Age", age], ["Height", p.height_cm ? `${p.height_cm} cm` : null], ["Marital status", p.marital_status], ["District", p.district], ["Living in", p.country_living]]],
     ["Background", [["Religion", p.religion], ["Ethnicity", p.ethnicity], ["Caste", p.caste], ["Mother tongue", p.mother_tongue], ["Diet", p.diet]]],
     ["Education and family", [["Education", p.education], ["Occupation", p.occupation], ["Family type", p.family_type], ["Father", p.father_occupation], ["Mother", p.mother_occupation], ["Siblings", p.siblings]]],
     ["Horoscope", [["Nakath", p.nakath], ["Rashi", p.rashi]]],
@@ -89,209 +113,204 @@ export default function ProfileViewPage() {
     ["Ethnicity", any(p.pref_ethnicity)], ["District", any(p.pref_district)], ["Marital status", any(p.pref_marital)],
   ];
 
-  /* floating action buttons: pass / interest / shortlist */
-  const heartAction = () => {
-    if ((rel.state === "none" || rel.state === "received") && !requireFace("send or accept interests")) return;
-    if (rel.state === "none") return setShowNote(!showNote);
-    if (rel.state === "sent") return run(() => withdrawInterest(rel.interest!.id));
-    if (rel.state === "received") return run(async () => { await respondInterest(rel.interest!.id, true); setCelebrate(true); });
-    if (rel.state === "connected") return nav(`/messages/${p.id}`);
-  };
-  const passAction = () => rel.state === "received" ? (requireFace("respond to interests") && run(() => respondInterest(rel.interest!.id, false))) : nav(-1);
-  const heartLabel = { none: "Send interest", sent: "Interest sent (tap to withdraw)", received: "Accept interest", connected: "Message", declined: "Declined" }[rel.state];
+  /* ---- action buttons (state based, like Follow / Message in Instagram) ---- */
+  let actions: ReactNode;
+  if (isMe) {
+    actions = (<>
+      <Link to="/onboarding" className={secondary}>Edit profile</Link>
+      <Link to="/create" className={secondary}>New post</Link>
+      <Link to="/story/new" aria-label="Add story" className={iconBtn}><Icon name="plus" size={18} /></Link>
+    </>);
+  } else {
+    const main: ReactNode =
+      rel.state === "none" ? <button className={primary} onClick={() => requireFace("send interests") && setShowNote(!showNote)}><Icon name="heart" size={16} />Send interest</button>
+      : rel.state === "sent" ? <button className={secondary} onClick={() => confirm("Withdraw your interest?") && run(() => withdrawInterest(rel.interest!.id))}><Icon name="check" size={16} />Interest sent</button>
+      : rel.state === "received" ? <button className={primary} onClick={() => requireFace("accept interests") && run(async () => { await respondInterest(rel.interest!.id, true); setCelebrate(true); })}>Accept</button>
+      : rel.state === "connected" ? <Link to={`/messages/${p.id}`} className={primary}><Icon name="chat" size={16} />Message</Link>
+      : <span className={`${secondary} opacity-60`}>Declined</span>;
+    const second: ReactNode = rel.state === "received"
+      ? <button className={secondary} onClick={() => requireFace("respond to interests") && run(() => respondInterest(rel.interest!.id, false))}>Decline</button>
+      : <button className={secondary} onClick={toggleSave}><Icon name="star" size={16} filled={saved} />{saved ? "Shortlisted" : "Shortlist"}</button>;
+    actions = (<>{main}{second}<button aria-label="Share profile" onClick={share} className={iconBtn}><Icon name="share" size={18} /></button></>);
+  }
+
+  const tabBtn = (t: Tab, icon: IconName, label: string) => (
+    <button key={t} onClick={() => setTab(t)} aria-label={label}
+      className={`flex flex-1 flex-col items-center gap-0.5 border-t-2 py-2.5 text-[11px] font-semibold uppercase tracking-wide transition ${tab === t ? "border-ink text-ink" : "border-transparent text-stone-400"}`}>
+      <Icon name={icon} size={22} />{label}
+    </button>
+  );
+
+  const ringClass = story ? "bg-gradient-to-tr from-amber-400 via-brand-500 to-brand-700 p-[3px]" : "bg-brand-200 p-[2px]";
+  const avatarInner = p.photoUrl
+    ? <img src={p.photoUrl} alt="" className="h-[84px] w-[84px] rounded-full object-cover sm:h-36 sm:w-36" />
+    : <span className="flex h-[84px] w-[84px] items-center justify-center rounded-full bg-brand-100 text-brand-600 sm:h-36 sm:w-36">
+        {p.hasPhoto ? <Icon name="lock" size={28} /> : <span className="font-display text-4xl">{p.full_name[0]}</span>}
+      </span>;
 
   return (
-    <div className="-mx-3 -mt-3 md:mx-auto md:mt-0 md:max-w-xl">
-      {/* hero photo */}
-      <div className="relative h-[54dvh] max-h-[560px] min-h-[340px] overflow-hidden bg-gradient-to-br from-brand-200 to-brand-100 md:rounded-b-[2rem]">
-        {p.photoUrl ? (
-          <img src={p.photoUrl} alt="" className="h-full w-full object-cover" onClick={() => viewable.length && setView(0)} />
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-2 text-brand-500">
-            <Icon name={lockedAll || p.hasPhoto ? "lock" : "user"} size={48} />
-            <span className="px-8 text-center text-sm">{p.hasPhoto ? "Photos are shown after your interest is accepted" : "No photo yet"}</span>
-          </div>
-        )}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/35 to-transparent" />
-        <div className="absolute inset-x-3 top-3 flex items-center justify-between">
-          {isMe ? <span /> : <button onClick={() => nav(-1)} aria-label="Back" className={glass}><Icon name="arrowLeft" size={20} /></button>}
-          <div className="relative">
-            {isMe ? (
-              <Link to="/settings" aria-label="Settings" className={glass}><Icon name="menu" size={20} /></Link>
-            ) : (
-              <>
-                <button onClick={() => setMenu(!menu)} aria-label="More" className={glass}><Icon name="dots" size={20} /></button>
-                {menu && (
-                  <div className="absolute right-0 top-12 z-20 w-44 overflow-hidden rounded-xl bg-white text-sm shadow-lg ring-1 ring-stone-900/10">
-                    <button className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-stone-50" onClick={() => { setMenu(false); setShowReport(true); }}><Icon name="flag" size={17} />Report</button>
-                    <button className="flex w-full items-center gap-2 px-4 py-3 text-left text-red-600 hover:bg-stone-50" onClick={async () => {
-                      setMenu(false);
-                      if (confirm(`Block ${p.full_name}? You will no longer see each other.`)) { await blockUser(user.id, p.id, p.full_name); nav("/discover"); }
-                    }}><Icon name="ban" size={17} />Block</button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+    <div className="mx-auto max-w-3xl">
+      {/* top bar */}
+      <div className="mb-2 grid grid-cols-[44px_1fr_44px] items-center">
+        {isMe ? <span /> : <button onClick={() => nav(-1)} aria-label="Back" className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-stone-100"><Icon name="arrowLeft" size={22} /></button>}
+        <h1 className="flex items-center justify-center gap-1.5 truncate text-center font-display text-xl font-semibold">
+          <span className="truncate">{p.full_name}</span>
+          {p.face_verified && <Icon name="shieldCheck" size={19} className="shrink-0 text-emerald-600" />}
+        </h1>
+        <div className="relative justify-self-end">
+          {isMe ? (
+            <Link to="/settings" aria-label="Settings" className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-stone-100"><Icon name="menu" size={23} /></Link>
+          ) : (
+            <>
+              <button onClick={() => setMenu(!menu)} aria-label="More" className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-stone-100"><Icon name="dots" size={23} /></button>
+              {menu && (
+                <div className="absolute right-0 top-11 z-20 w-44 overflow-hidden rounded-xl bg-white text-sm shadow-lg ring-1 ring-stone-900/10">
+                  <button className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-stone-50" onClick={() => { setMenu(false); share(); }}><Icon name="share" size={17} />Share profile</button>
+                  <button className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-stone-50" onClick={() => { setMenu(false); setShowReport(true); }}><Icon name="flag" size={17} />Report</button>
+                  <button className="flex w-full items-center gap-2 px-4 py-3 text-left text-red-600 hover:bg-stone-50" onClick={async () => {
+                    setMenu(false);
+                    if (confirm(`Block ${p.full_name}? You will no longer see each other.`)) { await blockUser(user.id, p.id, p.full_name); nav("/discover"); }
+                  }}><Icon name="ban" size={17} />Block</button>
+                </div>
+              )}
+            </>
+          )}
         </div>
-        {viewable.length > 1 && (
-          <button onClick={() => setView(0)} className="absolute bottom-12 left-4 flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1 text-xs font-medium text-white">
-            <Icon name="image" size={14} />{viewable.length} photos
-          </button>
+      </div>
+
+      {/* avatar + stats */}
+      <div className="flex items-center gap-5 px-1 sm:gap-14 sm:px-6">
+        <div className="relative shrink-0">
+          {story ? (
+            <button onClick={() => setViewStory(true)} aria-label="View story" className={`block rounded-full ${ringClass}`}><span className="block rounded-full bg-cream p-[3px]">{avatarInner}</span></button>
+          ) : (
+            <button onClick={() => viewable.length && setView(0)} aria-label="View photo" className={`block rounded-full ${ringClass}`}><span className="block rounded-full bg-cream p-[3px]">{avatarInner}</span></button>
+          )}
+          {isMe && <Link to="/story/new" aria-label="Add story" className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-white ring-2 ring-cream"><Icon name="plus" size={16} strokeWidth={3} /></Link>}
+        </div>
+        <div className="grid flex-1 grid-cols-3 text-center">
+          {stats.map(([n, l, t]) => (
+            <button key={l} disabled={!t} onClick={() => t && setTab(t)} className="rounded-lg py-1 disabled:cursor-default">
+              <span className="block text-lg font-bold leading-tight sm:text-xl">{n}</span>
+              <span className="block text-[13px] text-stone-500">{l}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* name + bio */}
+      <div className="mt-3 space-y-1 px-1 sm:px-6">
+        <p className="text-[15px] font-semibold">{p.full_name}{age ? `, ${age}` : ""}</p>
+        <p className="text-sm text-stone-500">{[p.occupation, p.district].filter(Boolean).join(" · ")}</p>
+        {about && (
+          <p className={`whitespace-pre-line text-sm leading-relaxed ${more ? "" : "line-clamp-3"}`}>{about}</p>
+        )}
+        {longBio && <button onClick={() => setMore(!more)} className="text-sm font-medium text-stone-500">{more ? "less" : "more"}</button>}
+        {match && <p className="pt-0.5 text-sm font-semibold text-brand-600">{match.score}% match · {matchLabel(match.score)}</p>}
+        {chips.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-2">
+            {chips.map((c) => <span key={c} className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700">{c}</span>)}
+          </div>
         )}
       </div>
 
-      {/* sheet */}
-      <div className="relative -mt-8 rounded-t-[2rem] bg-white px-5 pb-10 pt-12 shadow-[0_-10px_30px_rgba(58,31,43,.10)]">
-        {!isMe && (
-          <div className="absolute -top-9 left-0 right-0 flex items-center justify-center gap-5">
-            <button onClick={passAction} aria-label={rel.state === "received" ? "Decline" : "Not now"} className={`${round} h-14 w-14 text-brand-500`}><Icon name="x" size={26} strokeWidth={2.4} /></button>
-            <button onClick={heartAction} aria-label={heartLabel} disabled={rel.state === "declined"}
-              className={`${round} h-[72px] w-[72px] !bg-gradient-to-br from-brand-500 to-brand-700 text-white ring-4 ring-white disabled:opacity-60`}>
-              <Icon name={rel.state === "connected" ? "chat" : "heart"} size={32} filled={rel.state !== "connected"} />
-            </button>
-            <button onClick={async () => { await setShortlisted(user.id, p.id, !saved); setSaved(!saved); }} aria-label={saved ? "Remove from shortlist" : "Shortlist"}
-              className={`${round} h-14 w-14 ${saved ? "text-brand-600" : "text-brand-400"}`}><Icon name="star" size={24} filled={saved} /></button>
-          </div>
-        )}
-
-        {(err || msg || phone) && (
-          <div className="mb-3 space-y-2">
-            {err && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{err}</p>}
-            {msg && <p className="rounded-xl bg-green-50 p-3 text-sm text-green-800">{msg}</p>}
-            {phone && <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm"><Icon name="phone" size={16} />Contact number: <b>{phone}</b></p>}
-          </div>
-        )}
-
-        {!isMe && <p className="mb-3 text-center text-xs font-medium text-stone-500">{heartLabel}</p>}
-
+      {/* actions */}
+      <div className="mt-4 space-y-2 px-1 sm:px-6">
+        {err && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{err}</p>}
+        {msg && <p className="rounded-xl bg-green-50 p-3 text-sm text-green-800">{msg}</p>}
+        {phone && <p className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm"><Icon name="phone" size={16} />Contact number: <b>{phone}</b></p>}
+        <div className="flex gap-2">{actions}</div>
         {showNote && rel.state === "none" && (
-          <div className="mb-4 flex gap-2">
+          <div className="flex gap-2">
             <input className={input} placeholder="Add a short message (optional)" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
             <button className="rounded-xl bg-brand-600 px-4 font-semibold text-white" onClick={() => requireFace("send interests") && run(async () => { await sendInterest(user.id, p.id, note); setShowNote(false); setNote(""); }, "Interest sent")}>Send</button>
           </div>
         )}
+      </div>
 
-        {/* name */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="flex items-center gap-2 font-display text-2xl font-semibold">
-              <span className="truncate">{p.full_name}{age ? `, ${age}` : ""}</span>
-              {p.face_verified && <Icon name="shieldCheck" size={22} className="shrink-0 text-emerald-600" />}
-            </h1>
-            <p className="text-sm text-stone-500">{p.occupation ?? "Member"}</p>
-          </div>
-          {rel.state === "connected" && (
-            <Link to={`/messages/${p.id}`} aria-label="Message" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><Icon name="send" size={20} /></Link>
-          )}
+      {/* tabs */}
+      <div className="mt-5 flex border-t border-stone-200">
+        {tabBtn("posts", "grid", "Posts")}
+        {tabBtn("photos", "image", "Photos")}
+        {tabBtn("about", "user", "About")}
+      </div>
+
+      {tab === "posts" && (posts.length === 0 ? (
+        <div className="py-10">
+          <EmptyState icon="camera" title={isMe ? "Share your first post" : "No posts yet"}
+            text={isMe ? "Photos you share appear here for other members to see." : `${p.full_name.split(" ")[0]} has not shared anything yet.`}
+            action={isMe ? <Link to="/create" className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white">Create a post</Link> : undefined} />
         </div>
-
-        {isMe && (
-          <div className="mt-4 flex gap-2">
-            <Link to="/onboarding" className="flex-1 rounded-xl bg-brand-600 py-2.5 text-center text-sm font-semibold text-white">Edit profile</Link>
-            <Link to="/create" className="flex-1 rounded-xl bg-stone-200/80 py-2.5 text-center text-sm font-semibold">New post</Link>
-          </div>
-        )}
-
-        {/* location */}
-        {place && (
-          <div className="mt-5 flex items-center justify-between border-t border-stone-100 pt-4">
-            <div><p className="text-xs uppercase tracking-wide text-stone-400">Location</p>
-              <p className="flex items-center gap-1.5 font-medium"><Icon name="mapPin" size={16} className="text-brand-500" />{place}</p></div>
-            {match && <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">{match.score}% {matchLabel(match.score).split(" ")[0]}</span>}
-          </div>
-        )}
-
-        {/* about */}
-        {about && (
-          <div className="mt-5 border-t border-stone-100 pt-4">
-            <h2 className="mb-1 font-display text-lg font-semibold">About</h2>
-            <p className={`whitespace-pre-line text-sm leading-relaxed text-stone-700 ${readMore ? "" : "line-clamp-3"}`}>{about}</p>
-            {long && <button onClick={() => setReadMore(!readMore)} className="mt-1 text-sm font-semibold text-brand-600">{readMore ? "Show less" : "Read more"}</button>}
-          </div>
-        )}
-
-        {/* interests */}
-        {(p.interests?.length ?? 0) > 0 && (
-          <div className="mt-5 border-t border-stone-100 pt-4">
-            <h2 className="mb-2 font-display text-lg font-semibold">Interests</h2>
-            <div className="flex flex-wrap gap-2">
-              {p.interests!.map((t) => (
-                <span key={t} className="inline-flex items-center gap-1 rounded-lg border border-brand-300 bg-brand-50/60 px-3 py-1.5 text-sm text-brand-700">
-                  <Icon name="check" size={14} strokeWidth={2.6} />{t}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* gallery */}
-        {photos.length > 0 && (
-          <div className="mt-5 border-t border-stone-100 pt-4">
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="font-display text-lg font-semibold">Gallery</h2>
-              {viewable.length > 0 && <button onClick={() => setView(0)} className="text-sm font-semibold text-brand-600">See all</button>}
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {photos.slice(0, 6).map((x, i) => x.url ? (
-                <button key={x.id} onClick={() => setView(viewable.indexOf(x))}
-                  className={`overflow-hidden rounded-xl bg-stone-200 ${i === 0 && photos.length > 2 ? "col-span-2 row-span-2" : ""} aspect-square`}>
-                  <img src={x.url} alt="" loading="lazy" className="h-full w-full object-cover" />
-                </button>
-              ) : (
-                <div key={x.id} className={`flex aspect-square flex-col items-center justify-center gap-1 rounded-xl bg-brand-100 text-brand-400 ${i === 0 && photos.length > 2 ? "col-span-2 row-span-2" : ""}`}>
-                  <Icon name="lock" size={22} /><span className="text-[10px]">Private</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* match reasons */}
-        {match && match.reasons.length > 0 && (
-          <div className="mt-5 border-t border-stone-100 pt-4">
-            <h2 className="mb-2 font-display text-lg font-semibold">Why you match</h2>
-            <ul className="space-y-1.5 text-sm">
-              {match.reasons.map((r) => <li key={r} className="flex gap-2"><Icon name="check" size={16} className="mt-0.5 shrink-0 text-emerald-600" />{r}</li>)}
-            </ul>
-          </div>
-        )}
-
-        {/* details */}
-        {groups.map(([title, rows]) => {
-          const shown = rows.filter(([, v]) => v !== null && v !== "");
-          return shown.length ? (
-            <div key={title} className="mt-5 border-t border-stone-100 pt-4">
-              <h2 className="mb-1 font-display text-lg font-semibold">{title}</h2>
-              {shown.map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-4 py-1.5 text-sm"><span className="text-stone-500">{k}</span><span className="text-right font-medium">{v}</span></div>
-              ))}
-            </div>
-          ) : null;
-        })}
-
-        <div className="mt-5 border-t border-stone-100 pt-4">
-          <h2 className="mb-1 font-display text-lg font-semibold">Looking for</h2>
-          {looking.map(([k, v]) => (
-            <div key={k} className="flex justify-between gap-4 py-1.5 text-sm"><span className="text-stone-500">{k}</span><span className="font-medium">{v}</span></div>
+      ) : (
+        <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
+          {posts.map((x) => (
+            <Link key={x.id} to={`/post/${x.id}`} className="group relative aspect-square overflow-hidden bg-stone-200">
+              {x.images[0] && <img src={x.images[0]} alt="" loading="lazy" className="h-full w-full object-cover transition group-hover:scale-105" />}
+              {x.images.length > 1 && <Icon name="grid" size={17} className="absolute right-1.5 top-1.5 text-white drop-shadow" />}
+              <span className="absolute inset-0 flex items-center justify-center gap-3 bg-black/35 text-sm font-semibold text-white opacity-0 transition group-hover:opacity-100">
+                <span className="flex items-center gap-1"><Icon name="heart" size={16} filled />{x.likes}</span>
+                <span className="flex items-center gap-1"><Icon name="chat" size={16} filled />{x.comments}</span>
+              </span>
+            </Link>
           ))}
         </div>
+      ))}
 
-        {/* posts */}
-        {posts.length > 0 && (
-          <div className="mt-5 border-t border-stone-100 pt-4">
-            <h2 className="mb-2 font-display text-lg font-semibold">Posts</h2>
-            <div className="grid grid-cols-3 gap-1">
-              {posts.map((x) => (
-                <Link key={x.id} to={`/post/${x.id}`} className="relative aspect-square overflow-hidden bg-stone-200">
-                  {x.images[0] && <img src={x.images[0]} alt="" loading="lazy" className="h-full w-full object-cover" />}
-                  {x.images.length > 1 && <Icon name="grid" size={16} className="absolute right-1.5 top-1.5 text-white drop-shadow" />}
-                </Link>
-              ))}
+      {tab === "photos" && (photos.length === 0 ? (
+        <div className="py-10"><EmptyState icon="image" title="No photos yet" /></div>
+      ) : (
+        <div className="grid grid-cols-3 gap-0.5 sm:gap-1">
+          {photos.map((x) => x.url ? (
+            <button key={x.id} onClick={() => setView(viewable.indexOf(x))} className="aspect-square overflow-hidden bg-stone-200">
+              <img src={x.url} alt="" loading="lazy" className="h-full w-full object-cover" />
+            </button>
+          ) : (
+            <div key={x.id} className="flex aspect-square flex-col items-center justify-center gap-1 bg-brand-100 text-brand-400">
+              <Icon name="lock" size={22} /><span className="px-2 text-center text-[10px]">Private until accepted</span>
             </div>
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      ))}
+
+      {tab === "about" && (
+        <div className="space-y-4 px-1 py-4 sm:px-6">
+          {match && match.reasons.length > 0 && (
+            <section className="rounded-2xl bg-white p-4 ring-1 ring-stone-900/5">
+              <h2 className="mb-2 font-display text-lg font-semibold">Why you match</h2>
+              <ul className="space-y-1.5 text-sm">
+                {match.reasons.map((r) => <li key={r} className="flex gap-2"><Icon name="check" size={16} className="mt-0.5 shrink-0 text-emerald-600" />{r}</li>)}
+              </ul>
+            </section>
+          )}
+          {(p.interests?.length ?? 0) > 0 && (
+            <section className="rounded-2xl bg-white p-4 ring-1 ring-stone-900/5">
+              <h2 className="mb-2 font-display text-lg font-semibold">Interests</h2>
+              <div className="flex flex-wrap gap-2">
+                {p.interests!.map((t) => (
+                  <span key={t} className="inline-flex items-center gap-1 rounded-lg border border-brand-300 bg-brand-50/60 px-3 py-1.5 text-sm text-brand-700"><Icon name="check" size={14} strokeWidth={2.6} />{t}</span>
+                ))}
+              </div>
+            </section>
+          )}
+          {groups.map(([title, rows]) => {
+            const shown = rows.filter(([, v]) => v !== null && v !== "");
+            return shown.length ? (
+              <section key={title} className="overflow-hidden rounded-2xl bg-white ring-1 ring-stone-900/5">
+                <h2 className="px-4 pt-3 font-display text-lg font-semibold">{title}</h2>
+                {shown.map(([k, v]) => (
+                  <div key={k} className="flex justify-between gap-4 border-b border-stone-100 px-4 py-2.5 text-sm last:border-0"><span className="text-stone-500">{k}</span><span className="text-right font-medium">{v}</span></div>
+                ))}
+              </section>
+            ) : null;
+          })}
+          <section className="overflow-hidden rounded-2xl bg-white ring-1 ring-stone-900/5">
+            <h2 className="px-4 pt-3 font-display text-lg font-semibold">Looking for</h2>
+            {looking.map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-4 border-b border-stone-100 px-4 py-2.5 text-sm last:border-0"><span className="text-stone-500">{k}</span><span className="font-medium">{v}</span></div>
+            ))}
+          </section>
+        </div>
+      )}
 
       {/* photo viewer */}
       {view !== null && viewable[view] && (
@@ -303,8 +322,8 @@ export default function ProfileViewPage() {
         </div>
       )}
 
+      {viewStory && story && <StoryViewer groups={[story]} startIndex={0} meId={user.id} onClose={() => { setViewStory(false); load(); }} />}
       {celebrate && <MatchModal name={p.full_name} photo={p.photoUrl} chatTo={p.id} onClose={() => setCelebrate(false)} />}
-
       {showReport && (
         <ReportSheet title={`Report ${p.full_name}`} onClose={() => setShowReport(false)}
           onSubmit={async (r, d) => { await reportUser(user.id, p.id, r, d); setShowReport(false); setMsg("Report sent. Our team will review it."); }} />

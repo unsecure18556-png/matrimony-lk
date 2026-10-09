@@ -20,7 +20,7 @@ export default function AuthShell({ title, subtitle, children, footer }: {
           <h2 className="font-display text-5xl font-semibold leading-[1.1]">
             A partner for life, <span className="text-gold-300">found with trust.</span>
           </h2>
-          <ul className="space-y-4 text-brand-100">
+          <ul className="space-y-4 text-white/80">
             {([
               ["shieldCheck", "Every member is face-verified", "Real people only. No fake profiles."],
               ["lock", "Your photos, your control", "Share photos only with people you accept."],
@@ -35,7 +35,7 @@ export default function AuthShell({ title, subtitle, children, footer }: {
             ))}
           </ul>
         </div>
-        <p className="relative text-xs text-brand-200">Made for Sri Lankan families.</p>
+        <p className="relative text-xs text-white/60">Made for Sri Lankan families.</p>
       </aside>
 
       <main className="flex items-center justify-center p-4 sm:p-8">

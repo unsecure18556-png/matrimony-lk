@@ -39,7 +39,7 @@ export default function StoryStage({ overlay, mediaUrl, mediaType, stageRef, vid
       )}
 
       {overlay.location && (
-        <span className="absolute left-1/2 top-[14%] flex -translate-x-1/2 items-center gap-[1cqw] whitespace-nowrap rounded-full bg-white/90 px-[3.5cqw] py-[1.5cqw] text-[3.8cqw] font-semibold text-[#3A1F2B] shadow">
+        <span className="absolute left-1/2 top-[14%] flex -translate-x-1/2 items-center gap-[1cqw] whitespace-nowrap rounded-full bg-[rgba(255,255,255,.92)] px-[3.5cqw] py-[1.5cqw] text-[3.8cqw] font-semibold text-[#3A1F2B] shadow">
           <Icon name="mapPin" size={14} />{overlay.location}
         </span>
       )}

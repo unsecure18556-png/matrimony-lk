@@ -12,7 +12,7 @@ export function ProtectedRoute({ requireRole }: { requireRole?: string }) {
       <div className="mx-auto max-w-md p-10 text-center">
         <h1 className="text-xl font-bold text-red-600">Account suspended</h1>
         <p className="mt-2 text-gray-600">This account was suspended for breaking our rules.</p>
-        <button onClick={logout} className="mt-4 rounded bg-gray-800 px-4 py-2 text-white">Log out</button>
+        <button onClick={logout} className="mt-4 rounded bg-neutral-800 px-4 py-2 text-white">Log out</button>
       </div>
     );
   if (requireRole && account?.role !== requireRole) return <Navigate to="/dashboard" replace />;
