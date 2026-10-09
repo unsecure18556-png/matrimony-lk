@@ -7,15 +7,24 @@ import { ErrorBoundary, SetupScreen } from "./components/ErrorScreen";
 import { ThemeProvider } from "./theme/ThemeContext";
 import { BrandingProvider } from "./branding/BrandingContext";
 
-createRoot(document.getElementById("root")!).render(
+const rootEl = document.getElementById("root")!;
+createRoot(rootEl).render(
   <StrictMode>
-    <ThemeProvider>
-      <BrandingProvider>
-        <ErrorBoundary>{envProblem ? <SetupScreen problem={envProblem} /> : <App />}</ErrorBoundary>
-      </BrandingProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <BrandingProvider>
+          {envProblem ? <SetupScreen problem={envProblem} /> : <App />}
+        </BrandingProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   </StrictMode>
 );
+rootEl.setAttribute("data-ready", "1"); // tells the start-up safety net that the app is running
+
+// After a new deploy, an open tab may ask for a file that no longer exists: reload once to pick up the new version.
+window.addEventListener("vite:preloadError", () => {
+  if (!sessionStorage.getItem("reloaded_after_deploy")) { sessionStorage.setItem("reloaded_after_deploy", "1"); location.reload(); }
+});
 
 // Register the service worker (makes the app installable on phones). Production only.
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
