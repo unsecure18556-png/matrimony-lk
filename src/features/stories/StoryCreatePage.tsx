@@ -4,13 +4,13 @@ import { useAuth } from "../auth/AuthContext";
 import { createStory, emptyOverlay, FILTERS, type Overlay } from "../../services/storyService";
 import StoryStage from "../../components/stories/StoryStage";
 import Icon, { type IconName } from "../../components/ui/Icon";
-import { input } from "../../components/ui/styles";
 import VerifyNotice from "../../components/VerifyNotice";
 
-type Tool = "filter" | "adjust" | "text" | "sticker" | "draw" | "music" | "place";
+type Tool = "filter" | "adjust" | "text" | "sticker" | "draw" | "music" | "place" | "more";
+// top-bar icons, in the same order as Instagram's story editor: text, stickers, draw, effects, music, more
 const TOOLS: [Tool, IconName, string][] = [
-  ["filter", "sparkles", "Filters"], ["adjust", "sliders", "Adjust"], ["text", "type", "Text"], ["sticker", "smile", "Stickers"],
-  ["draw", "pen", "Draw"], ["music", "music", "Music"], ["place", "mapPin", "Place"],
+  ["text", "type", "Text"], ["sticker", "smile", "Stickers"], ["draw", "pen", "Draw"],
+  ["filter", "sparkles", "Effects"], ["music", "music", "Music"], ["more", "dots", "More"],
 ];
 const COLORS = ["#ffffff", "#000000", "#E85D75", "#F7C6D0", "#facc15", "#34d399", "#60a5fa"];
 const BRUSH = [0.08, 0.16, 0.3];
@@ -29,7 +29,8 @@ export default function StoryCreatePage() {
   const [type, setType] = useState<"image" | "video">("image");
   const [url, setUrl] = useState("");
   const [ov, setOv] = useState<Overlay>(emptyOverlay());
-  const [tool, setTool] = useState<Tool>("filter");
+  const [tool, setTool] = useState<Tool | null>(null);
+  const [caption, setCaption] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [textDraft, setTextDraft] = useState("");
   const [color, setColor] = useState("#ffffff");
@@ -64,7 +65,7 @@ export default function StoryCreatePage() {
       const dur = await new Promise<number>((res) => { const v = document.createElement("video"); v.preload = "metadata"; v.onloadedmetadata = () => res(v.duration); v.onerror = () => res(0); v.src = u; });
       if (dur > MAX_VIDEO_S + 0.5) { URL.revokeObjectURL(u); return setErr(`Videos can be up to ${MAX_VIDEO_S} seconds. Yours is ${Math.round(dur)} seconds.`); }
     }
-    setFile(f); setType(isVideo ? "video" : "image"); setUrl(u); setOv(emptyOverlay()); setTool("filter");
+    setFile(f); setType(isVideo ? "video" : "image"); setUrl(u); setOv(emptyOverlay()); setTool(null); setCaption("");
   }
 
   async function chooseMusic(f?: File | null) {
@@ -136,31 +137,46 @@ export default function StoryCreatePage() {
     if (!file) return;
     setBusy(true); setErr("");
     try {
-      await createStory(user!.id, { file, mediaType: type, overlay: ov, visibility, music: music ? { file: music.file, title: music.title, start: music.start } : null });
+      const cap = caption.trim();
+      const overlay: Overlay = cap ? { ...ov, texts: [...ov.texts, { id: uid(), text: cap, color: "#ffffff", x: 0.5, y: 0.86, size: 6 }] } : ov;
+      await createStory(user!.id, { file, mediaType: type, overlay, visibility, music: music ? { file: music.file, title: music.title, start: music.start } : null });
       nav("/dashboard");
     } catch (e: any) { setErr(e.message); setBusy(false); }
   }
 
+  const shell = "fixed inset-0 z-[60] flex flex-col bg-black text-white";
+  const di = "w-full rounded-lg bg-white/15 px-3 py-2.5 text-white placeholder:text-white/60 focus:outline-none";
+  const circle = "flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm";
+
   /* ---------------- step 1: choose media ---------------- */
   if (!file) {
-    const big = "flex flex-col items-center gap-2 rounded-2xl bg-white p-6 text-sm font-medium shadow-sm ring-1 ring-stone-900/5 hover:shadow-md";
+    const big = "flex flex-col items-center gap-2.5 rounded-2xl bg-white/10 p-5 text-sm font-semibold text-white active:scale-[.98]";
+    const ico = "flex h-12 w-12 items-center justify-center rounded-full bg-white/15";
     return (
-      <div className="mx-auto max-w-md space-y-4">
-        <div className="grid grid-cols-[44px_1fr_44px] items-center">
-          <Link to="/dashboard" aria-label="Back" className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-stone-100"><Icon name="arrowLeft" size={22} /></Link>
-          <h1 className="text-center font-display text-xl font-semibold">New story</h1><span />
+      <div className={shell}>
+        <div className="safe-top grid grid-cols-[48px_1fr_48px] items-center px-2 pt-2">
+          <Link to="/dashboard" aria-label="Close" className="flex h-11 w-11 items-center justify-center rounded-full"><Icon name="x" size={26} /></Link>
+          <h1 className="text-center font-sans text-base font-bold">New story</h1><span />
         </div>
-        <div className="grid grid-cols-2 gap-1 rounded-xl bg-stone-100 p-1 text-sm font-semibold">
-          <Link to="/create" className="rounded-lg py-2 text-center text-stone-500">Post</Link>
-          <span className="rounded-lg bg-white py-2 text-center text-brand-700 shadow-sm">Story</span>
+        {err && <p className="mx-4 mt-2 rounded-xl bg-red-500/25 p-3 text-sm text-red-100">{err}</p>}
+        <div className="flex flex-1 flex-col items-center justify-center gap-6 px-5">
+          <div className="w-full max-w-sm rounded-3xl bg-gradient-to-br from-brand-500 via-brand-600 to-brand-800 p-8 text-center shadow-xl">
+            <p className="font-display text-2xl font-semibold">Share a moment</p>
+            <p className="mt-1 text-sm text-white">Photo or video, gone after 24 hours</p>
+          </div>
+          <div className="grid w-full max-w-sm grid-cols-3 gap-3">
+            <button onClick={() => galleryRef.current?.click()} className={big}><span className={ico}><Icon name="image" size={24} /></span>Gallery</button>
+            <button onClick={() => photoRef.current?.click()} className={big}><span className={ico}><Icon name="camera" size={24} /></span>Camera</button>
+            <button onClick={() => videoRef.current?.click()} className={big}><span className={ico}><Icon name="video" size={24} /></span>Video</button>
+          </div>
+          <p className="text-center text-xs text-white/80">Videos can be up to {MAX_VIDEO_S} seconds.</p>
         </div>
-        {err && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{err}</p>}
-        <div className="grid grid-cols-3 gap-3">
-          <button onClick={() => galleryRef.current?.click()} className={big}><span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-600"><Icon name="image" size={24} /></span>Gallery</button>
-          <button onClick={() => photoRef.current?.click()} className={big}><span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-600"><Icon name="camera" size={24} /></span>Camera</button>
-          <button onClick={() => videoRef.current?.click()} className={big}><span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-600"><Icon name="video" size={24} /></span>Video</button>
+        <div className="safe-bottom px-6 pb-4">
+          <div className="mx-auto grid max-w-xs grid-cols-2 rounded-full bg-white/10 p-1 text-sm font-semibold">
+            <Link to="/create" className="rounded-full py-2 text-center text-white/80">POST</Link>
+            <span className="rounded-full bg-white py-2 text-center text-[#3A1F2B]">STORY</span>
+          </div>
         </div>
-        <p className="text-center text-xs text-stone-500">Stories disappear after 24 hours. Videos can be up to {MAX_VIDEO_S} seconds.</p>
         <input ref={galleryRef} type="file" accept="image/*,video/*" hidden onChange={(e) => { choose(e.target.files?.[0]); e.target.value = ""; }} />
         <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { choose(e.target.files?.[0]); e.target.value = ""; }} />
         <input ref={videoRef} type="file" accept="video/*" capture="environment" hidden onChange={(e) => { choose(e.target.files?.[0]); e.target.value = ""; }} />
@@ -168,127 +184,170 @@ export default function StoryCreatePage() {
     );
   }
 
-  /* ---------------- step 2: edit ---------------- */
-  const chip = (on: boolean) => `shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium ${on ? "bg-brand-600 text-white" : "bg-stone-100"}`;
-  const slider = (label: string, v: number, min: number, max: number, on: (n: number) => void) => (
-    <label className="flex items-center gap-3 text-sm"><span className="w-24 shrink-0">{label}</span><input type="range" min={min} max={max} value={v} onChange={(e) => on(Number(e.target.value))} className="w-full accent-brand-600" /></label>
+  /* ---------------- step 2: edit (Instagram-style full-screen editor) ---------------- */
+  const swatches = (cur: string, on: (c: string) => void) => (
+    <div className="flex items-center justify-center gap-2.5">
+      {COLORS.map((c) => <button key={c} aria-label={`Color ${c}`} onClick={() => on(c)} className={`h-7 w-7 rounded-full border-2 ${cur === c ? "border-white scale-110" : "border-white/50"}`} style={{ background: c }} />)}
+    </div>
   );
+  const slider = (label: string, v: number, min: number, max: number, on: (n: number) => void) => (
+    <label className="flex items-center gap-3 text-sm"><span className="w-24 shrink-0 text-white">{label}</span><input type="range" min={min} max={max} value={v} onChange={(e) => on(Number(e.target.value))} className="w-full accent-brand-500" /></label>
+  );
+  const fmt = (n: number) => `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, "0")}`;
+  const sheet = "absolute inset-x-0 bottom-0 z-20 space-y-3 rounded-t-2xl bg-black/80 p-4 text-white backdrop-blur-md";
+  const done = <button onClick={() => setTool(null)} className="ml-auto block text-sm font-bold text-white">Done</button>;
+  const full = tool === "text";
 
   return (
-    <div className="mx-auto max-w-md space-y-3">
-      <div className="grid grid-cols-[44px_1fr_auto] items-center">
-        <button aria-label="Back" onClick={() => { setFile(null); setUrl(""); setMusic(null); }} className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-stone-100"><Icon name="arrowLeft" size={22} /></button>
-        <h1 className="text-center font-display text-xl font-semibold">Edit story</h1>
-        <button onClick={share} disabled={busy} className="rounded-full bg-brand-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Sharing..." : "Share"}</button>
-      </div>
-      {err && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{err}</p>}
+    <div className={shell}>
+      <div className="relative flex min-h-0 flex-1 items-center justify-center">
+        <div className="relative" style={{ width: "min(100%, calc((100dvh - 128px) * 9 / 16))" }}>
+          <StoryStage overlay={ov} mediaUrl={url} mediaType={type} stageRef={stageRef} editable selected={selected} onItemDown={itemDown} onRemove={removeItem}
+            className="rounded-2xl" style={{ touchAction: "none", cursor: tool === "draw" ? "crosshair" : "grab" }}
+            onPointerDown={stageDown} onPointerMove={stageMove} onPointerUp={stageUp} onPointerCancel={stageUp} />
 
-      <div className="mx-auto" style={{ width: "min(100%, calc(62dvh * 9 / 16))" }}>
-        <StoryStage overlay={ov} mediaUrl={url} mediaType={type} stageRef={stageRef} editable selected={selected} onItemDown={itemDown} onRemove={removeItem}
-          className="rounded-2xl" style={{ touchAction: "none", cursor: tool === "draw" ? "crosshair" : "grab" }}
-          onPointerDown={stageDown} onPointerMove={stageMove} onPointerUp={stageUp} onPointerCancel={stageUp} />
+          {/* top icon row, like Instagram */}
+          {!full && (
+            <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-1.5 p-3" onPointerDown={(e) => e.stopPropagation()}>
+              <button aria-label="Close" className={circle} onClick={() => { audioRef.current?.pause(); setPlaying(false); setFile(null); setUrl(""); setMusic(null); }}><Icon name="x" size={22} /></button>
+              <div className="ml-auto flex items-center gap-1.5">
+                {TOOLS.map(([k, icon, label]) => (
+                  <button key={k} aria-label={label} onClick={() => setTool(tool === k ? null : k)} className={`${circle} ${tool === k || (k === "music" && music) ? "!bg-white !text-[#3A1F2B]" : ""}`}><Icon name={icon} size={20} /></button>
+                ))}
+              </div>
+            </div>
+          )}
+          {err && <p className="absolute inset-x-3 top-16 z-10 rounded-xl bg-red-600 p-2.5 text-center text-sm text-white">{err}</p>}
+
+          {/* text: centred typing like Instagram */}
+          {full && (
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 rounded-2xl bg-black/70 p-5">
+              <button className="absolute right-4 top-4 text-sm font-bold text-white" onClick={() => {
+                const t = textDraft.trim();
+                if (t) { const id = uid(); setOv((o) => ({ ...o, texts: [...o.texts, { id, text: t, color, x: 0.5, y: 0.5, size: 8 }] })); setSelected(id); }
+                setTextDraft(""); setTool(null);
+              }}>Done</button>
+              <textarea autoFocus rows={3} maxLength={120} value={textDraft} onChange={(e) => setTextDraft(e.target.value)} placeholder="Start typing"
+                className="w-full resize-none bg-transparent text-center text-3xl font-bold placeholder:text-white/50 focus:outline-none" style={{ color }} />
+              {swatches(color, setColor)}
+            </div>
+          )}
+
+          {tool === "filter" && (
+            <div className={sheet}>
+              {done}
+              <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {Object.entries(FILTERS).map(([k, f]) => (
+                  <button key={k} onClick={() => set({ filter: k })} className="shrink-0 text-center">
+                    <span className={`block h-16 w-16 overflow-hidden rounded-xl bg-white/20 ring-2 ${ov.filter === k ? "ring-white" : "ring-transparent"}`}>
+                      {type === "image" && <img src={url} alt="" className="h-full w-full object-cover" style={{ filter: f.css }} />}
+                    </span>
+                    <span className="mt-1 block text-[11px] font-medium text-white">{f.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tool === "sticker" && (
+            <div className={sheet}>
+              {done}
+              <div className="grid grid-cols-8 gap-1">
+                {EMOJI.map((em) => <button key={em} className="rounded-lg p-1 text-2xl active:bg-white/20" onClick={() => { const id = uid(); setOv((o) => ({ ...o, stickers: [...o.stickers, { id, emoji: em, x: 0.5, y: 0.5, size: 16 }] })); setSelected(id); setTool(null); }}>{em}</button>)}
+              </div>
+            </div>
+          )}
+
+          {tool === "draw" && (
+            <div className={sheet}>
+              <div className="flex items-center">
+                <button className="flex items-center gap-1.5 text-sm font-medium text-white" onClick={() => setOv((o) => ({ ...o, strokes: o.strokes.slice(0, -1) }))}><Icon name="undo" size={16} />Undo</button>
+                <div className="mx-auto flex items-center gap-2">
+                  {BRUSH.map((_, i) => <button key={i} aria-label={`Brush ${i + 1}`} onClick={() => setBrush(i)} className={`flex h-9 w-9 items-center justify-center rounded-full ${brush === i ? "bg-white/30" : "bg-white/10"}`}><span className="rounded-full bg-white" style={{ width: 6 + i * 6, height: 6 + i * 6 }} /></button>)}
+                </div>
+                <button onClick={() => setTool(null)} className="text-sm font-bold text-white">Done</button>
+              </div>
+              {swatches(color, setColor)}
+            </div>
+          )}
+
+          {tool === "music" && (
+            <div className={sheet}>
+              {done}
+              <input ref={musicRef} type="file" accept="audio/*" hidden onChange={(e) => { chooseMusic(e.target.files?.[0]); e.target.value = ""; }} />
+              {!music ? (
+                <>
+                  <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-semibold text-[#3A1F2B]" onClick={() => musicRef.current?.click()}><Icon name="music" size={18} />Choose a song from your device</button>
+                  <p className="text-xs text-white/80">Use music you own or have permission to share. MP3, M4A or WAV, up to {MAX_MUSIC_MB} MB.</p>
+                </>
+              ) : (
+                <>
+                  <input className={di} value={music.title} maxLength={60} onChange={(e) => setMusic({ ...music, title: e.target.value })} placeholder="Song title" />
+                  {slider("Start at", Math.round(music.start), 0, Math.max(0, Math.floor(music.duration) - 1), (n) => { setMusic({ ...music, start: n }); if (playing) { audioRef.current!.currentTime = n; } })}
+                  <p className="text-xs text-white/80">Starts at {fmt(music.start)} of {fmt(music.duration)}</p>
+                  <div className="flex gap-2">
+                    <button className="flex items-center gap-1.5 rounded-full bg-white/20 px-4 py-2 text-sm font-medium text-white" onClick={togglePreview}><Icon name={playing ? "pause" : "play"} size={16} filled={!playing} />{playing ? "Pause" : "Preview"}</button>
+                    <button className="rounded-full bg-white/20 px-4 py-2 text-sm text-white" onClick={() => { audioRef.current?.pause(); setPlaying(false); URL.revokeObjectURL(music.url); setMusic(null); }}>Remove</button>
+                  </div>
+                  {type === "video" && <p className="text-xs text-white/80">The video's own sound is muted when music is added.</p>}
+                </>
+              )}
+            </div>
+          )}
+
+          {tool === "more" && (
+            <div className={sheet}>
+              {done}
+              <button className="flex w-full items-center gap-3 py-2 text-left text-[15px] text-white" onClick={() => setTool("adjust")}><Icon name="sliders" size={20} />Adjust &amp; zoom</button>
+              <button className="flex w-full items-center gap-3 py-2 text-left text-[15px] text-white" onClick={() => setTool("place")}><Icon name="mapPin" size={20} />Add location</button>
+            </div>
+          )}
+
+          {tool === "adjust" && (
+            <div className={sheet}>
+              {done}
+              {slider("Brightness", ov.adjust.b, 50, 150, (n) => set({ adjust: { ...ov.adjust, b: n } }))}
+              {slider("Contrast", ov.adjust.c, 50, 150, (n) => set({ adjust: { ...ov.adjust, c: n } }))}
+              {slider("Saturation", ov.adjust.s, 0, 200, (n) => set({ adjust: { ...ov.adjust, s: n } }))}
+              {slider("Zoom", Math.round(ov.zoom * 100), 100, 300, (n) => set({ zoom: n / 100, ox: 0, oy: 0 }))}
+              <p className="text-xs text-white/80">Drag the picture to move it when zoomed in.</p>
+              <button className="text-sm font-semibold text-white underline" onClick={() => set({ adjust: { b: 100, c: 100, s: 100 }, zoom: 1, ox: 0, oy: 0 })}>Reset</button>
+            </div>
+          )}
+
+          {tool === "place" && (
+            <div className={sheet}>
+              {done}
+              <input className={di} maxLength={40} placeholder="Add a location, e.g. Galle Face" value={ov.location ?? ""} onChange={(e) => set({ location: e.target.value || undefined })} />
+            </div>
+          )}
+
+          {/* size controls for the selected text / sticker */}
+          {!tool && (selText || selSticker) && (
+            <div className="absolute inset-x-3 bottom-3 z-10 rounded-xl bg-black/60 p-3 backdrop-blur" onPointerDown={(e) => e.stopPropagation()}>
+              {selText && slider("Text size", selText.size, 4, 20, (n) => setOv((o) => ({ ...o, texts: o.texts.map((t) => (t.id === selText.id ? { ...t, size: n } : t)) })))}
+              {selText && <div className="mt-2">{swatches(selText.color, (c) => setOv((o) => ({ ...o, texts: o.texts.map((t) => (t.id === selText.id ? { ...t, color: c } : t)) })))}</div>}
+              {selSticker && slider("Size", selSticker.size, 8, 40, (n) => setOv((o) => ({ ...o, stickers: o.stickers.map((t) => (t.id === selSticker.id ? { ...t, size: n } : t)) })))}
+            </div>
+          )}
+        </div>
       </div>
       {music && <audio ref={audioRef} src={music.url} onEnded={() => setPlaying(false)} />}
 
-      <div className="flex gap-1 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {TOOLS.map(([k, icon, label]) => (
-          <button key={k} onClick={() => setTool(k)} className={`flex min-w-[64px] flex-col items-center gap-1 rounded-xl px-2 py-2 text-[11px] font-medium ${tool === k ? "bg-brand-100 text-brand-700" : "text-stone-600"}`}>
-            <Icon name={icon} size={21} />{label}
+      {/* bottom bar: caption + Your story / Matches + send arrow, like Instagram */}
+      <div className="safe-bottom space-y-2.5 px-3 pb-3 pt-2">
+        <input value={caption} onChange={(e) => setCaption(e.target.value)} maxLength={80} placeholder="Add a caption…"
+          className="w-full rounded-full bg-white/15 px-4 py-2.5 text-[15px] text-white placeholder:text-white/70 focus:outline-none" />
+        <div className="flex items-center gap-2">
+          <button onClick={() => setVisibility("members")} className={`flex flex-1 items-center gap-2 rounded-full px-3 py-2.5 text-sm font-semibold text-white ${visibility === "members" ? "bg-white/25 ring-2 ring-white" : "bg-white/10"}`}>
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/25"><Icon name="user" size={14} /></span>Your story
           </button>
-        ))}
-      </div>
-
-      <div className="space-y-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-900/5">
-        {tool === "filter" && (
-          <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {Object.entries(FILTERS).map(([k, f]) => <button key={k} className={chip(ov.filter === k)} onClick={() => set({ filter: k })}>{f.label}</button>)}
-          </div>
-        )}
-
-        {tool === "adjust" && (
-          <>
-            {slider("Brightness", ov.adjust.b, 50, 150, (n) => set({ adjust: { ...ov.adjust, b: n } }))}
-            {slider("Contrast", ov.adjust.c, 50, 150, (n) => set({ adjust: { ...ov.adjust, c: n } }))}
-            {slider("Saturation", ov.adjust.s, 0, 200, (n) => set({ adjust: { ...ov.adjust, s: n } }))}
-            {slider("Zoom", Math.round(ov.zoom * 100), 100, 300, (n) => set({ zoom: n / 100, ox: 0, oy: 0 }))}
-            <p className="text-xs text-stone-500">Drag the picture to move it when zoomed in.</p>
-            <button className="text-sm font-medium text-brand-700" onClick={() => set({ adjust: { b: 100, c: 100, s: 100 }, zoom: 1, ox: 0, oy: 0 })}>Reset adjustments</button>
-          </>
-        )}
-
-        {tool === "text" && (
-          <>
-            <textarea className={input} rows={2} maxLength={120} placeholder="Type something..." value={textDraft} onChange={(e) => setTextDraft(e.target.value)} />
-            <div className="flex items-center gap-2">
-              {COLORS.map((c) => <button key={c} aria-label={`Color ${c}`} onClick={() => { setColor(c); if (selText) setOv((o) => ({ ...o, texts: o.texts.map((t) => (t.id === selText.id ? { ...t, color: c } : t)) })); }}
-                className={`h-8 w-8 rounded-full ring-2 ${color === c ? "ring-brand-600" : "ring-stone-300"}`} style={{ background: c }} />)}
-            </div>
-            <button disabled={!textDraft.trim()} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              onClick={() => { const id = uid(); setOv((o) => ({ ...o, texts: [...o.texts, { id, text: textDraft.trim(), color, x: 0.5, y: 0.5, size: 8 }] })); setSelected(id); setTextDraft(""); }}>Add text</button>
-            {selText && slider("Text size", selText.size, 4, 20, (n) => setOv((o) => ({ ...o, texts: o.texts.map((t) => (t.id === selText.id ? { ...t, size: n } : t)) })))}
-          </>
-        )}
-
-        {tool === "sticker" && (
-          <>
-            <div className="grid grid-cols-8 gap-1.5">
-              {EMOJI.map((em) => <button key={em} className="rounded-lg p-1 text-2xl hover:bg-stone-100" onClick={() => { const id = uid(); setOv((o) => ({ ...o, stickers: [...o.stickers, { id, emoji: em, x: 0.5, y: 0.5, size: 16 }] })); setSelected(id); }}>{em}</button>)}
-            </div>
-            {selSticker && slider("Size", selSticker.size, 8, 40, (n) => setOv((o) => ({ ...o, stickers: o.stickers.map((t) => (t.id === selSticker.id ? { ...t, size: n } : t)) })))}
-          </>
-        )}
-
-        {tool === "draw" && (
-          <>
-            <p className="text-xs text-stone-500">Draw on the picture with your finger or mouse.</p>
-            <div className="flex items-center gap-2">
-              {COLORS.map((c) => <button key={c} aria-label={`Color ${c}`} onClick={() => setColor(c)} className={`h-8 w-8 rounded-full ring-2 ${color === c ? "ring-brand-600" : "ring-stone-300"}`} style={{ background: c }} />)}
-            </div>
-            <div className="flex items-center gap-2">
-              {BRUSH.map((_, i) => <button key={i} aria-label={`Brush ${i + 1}`} onClick={() => setBrush(i)} className={`flex h-10 w-10 items-center justify-center rounded-full ${brush === i ? "bg-brand-100" : "bg-stone-100"}`}><span className="rounded-full bg-ink" style={{ width: 6 + i * 6, height: 6 + i * 6 }} /></button>)}
-              <button className="ml-auto flex items-center gap-1.5 rounded-xl bg-stone-100 px-3 py-2 text-sm" onClick={() => setOv((o) => ({ ...o, strokes: o.strokes.slice(0, -1) }))}><Icon name="undo" size={16} />Undo</button>
-              <button className="rounded-xl bg-stone-100 px-3 py-2 text-sm" onClick={() => setOv((o) => ({ ...o, strokes: [] }))}>Clear</button>
-            </div>
-          </>
-        )}
-
-        {tool === "music" && (
-          <>
-            <input ref={musicRef} type="file" accept="audio/*" hidden onChange={(e) => { chooseMusic(e.target.files?.[0]); e.target.value = ""; }} />
-            {!music ? (
-              <>
-                <button className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white" onClick={() => musicRef.current?.click()}><Icon name="music" size={18} />Choose a song from your device</button>
-                <p className="text-xs text-stone-500">Use music you own or have permission to share. MP3, M4A or WAV, up to {MAX_MUSIC_MB} MB.</p>
-              </>
-            ) : (
-              <>
-                <input className={input} value={music.title} maxLength={60} onChange={(e) => setMusic({ ...music, title: e.target.value })} placeholder="Song title" />
-                {slider("Start at", Math.round(music.start), 0, Math.max(0, Math.floor(music.duration) - 1), (n) => { setMusic({ ...music, start: n }); if (playing) { audioRef.current!.currentTime = n; } })}
-                <p className="text-xs text-stone-500">Starts at {Math.floor(music.start / 60)}:{String(Math.floor(music.start % 60)).padStart(2, "0")} of {Math.floor(music.duration / 60)}:{String(Math.floor(music.duration % 60)).padStart(2, "0")}</p>
-                <div className="flex gap-2">
-                  <button className="flex items-center gap-1.5 rounded-xl bg-stone-100 px-4 py-2 text-sm font-medium" onClick={togglePreview}><Icon name={playing ? "pause" : "play"} size={16} filled={!playing} />{playing ? "Pause" : "Preview"}</button>
-                  <button className="rounded-xl bg-stone-100 px-4 py-2 text-sm" onClick={() => { audioRef.current?.pause(); setPlaying(false); URL.revokeObjectURL(music.url); setMusic(null); }}>Remove</button>
-                </div>
-                {type === "video" && <p className="text-xs text-stone-500">The video's own sound is muted when music is added.</p>}
-              </>
-            )}
-          </>
-        )}
-
-        {tool === "place" && (
-          <>
-            <input className={input} maxLength={40} placeholder="Add a location, e.g. Galle Face" value={ov.location ?? ""} onChange={(e) => set({ location: e.target.value || undefined })} />
-            <p className="text-xs text-stone-500">Shows as a tag on your story.</p>
-          </>
-        )}
-      </div>
-
-      <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-900/5">
-        <p className="mb-2 text-sm font-semibold">Who can see this?</p>
-        <div className="grid grid-cols-2 gap-2">
-          {([["members", "All members"], ["matches", "Matches only"]] as const).map(([v, t]) => (
-            <button key={v} onClick={() => setVisibility(v)} className={`rounded-xl py-2.5 text-sm font-medium ${visibility === v ? "bg-brand-600 text-white" : "bg-stone-100"}`}>{t}</button>
-          ))}
+          <button onClick={() => setVisibility("matches")} className={`flex flex-1 items-center gap-2 rounded-full px-3 py-2.5 text-sm font-semibold text-white ${visibility === "matches" ? "bg-white/25 ring-2 ring-white" : "bg-white/10"}`}>
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500"><Icon name="star" size={13} filled /></span>Matches only
+          </button>
+          <button onClick={share} disabled={busy} aria-label="Share story" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-[#3A1F2B] disabled:opacity-50">
+            {busy ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#3A1F2B] border-t-transparent" /> : <Icon name="arrowRight" size={22} strokeWidth={2.4} />}
+          </button>
         </div>
       </div>
     </div>

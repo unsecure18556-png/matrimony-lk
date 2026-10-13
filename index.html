@@ -12,6 +12,7 @@
     <link rel="icon" type="image/png" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
+    <!-- Pick the theme before anything paints (no white flash) -->
     <script>
       try {
         var t = localStorage.getItem("theme");
@@ -21,6 +22,7 @@
       } catch (e) {}
     </script>
 
+    <!-- Critical styles: the page is never plain white, even before the main CSS arrives -->
     <style>
       html { background: #FFF1E8; }
       html[data-theme="dark"] { background: #140c10; color-scheme: dark; }
@@ -33,11 +35,13 @@
       .boot button { background: #B23A54; color: #fff; border: 0; border-radius: 12px; padding: 12px 22px; font-size: 16px; font-weight: 600; }
     </style>
 
+    <!-- Fonts load in the background so a slow font server can never block the page -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" /></noscript>
 
+    <!-- Safety net: if the app fails to start, show WHY instead of a blank page -->
     <script>
       (function () {
         var done = false;
@@ -52,13 +56,17 @@
         }
         window.addEventListener("error", function (e) {
           var t = e && e.target;
-          if (t && t !== window && t.tagName !== "SCRIPT") return;
-          fail(t && t.src ? "Could not load " + t.src : (e && e.message) || "Unknown error");
+          if (t && t !== window && t.tagName !== "SCRIPT") return; // a font or image failing is not fatal
+          var src = t && t.src ? t.src : "";
+          if (/\/src\/main\.tsx/.test(src)) {
+            fail("This site was published WITHOUT being built (it is still the source code).\n\nFix in Cloudflare: Workers & Pages > your project > Settings > Build configuration\n  Build command: npm run build\n  Build output directory: dist\nThen redeploy.\n\n(" + src + ")");
+          } else fail(src ? "Could not load " + src : (e && e.message) || "Unknown error");
         }, true);
         window.addEventListener("unhandledrejection", function (e) { fail((e.reason && e.reason.message) || e.reason || "Unknown error"); });
         setTimeout(function () { fail("The app took too long to start. Your connection may be slow, or a file did not load (try a hard refresh)."); }, 15000);
       })();
     </script>
+    <script src="/config.js"></script>
     <title>Matrimony LK</title>
   </head>
   <body>

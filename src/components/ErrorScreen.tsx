@@ -10,7 +10,8 @@ export function SetupScreen({ problem }: { problem: string }) {
         <p className="mt-2 text-red-700">{problem}</p>
         <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-stone-700">
           <li>In Supabase open <b>Project Settings → API</b> and copy the <b>Project URL</b> and the <b>publishable (anon) key</b>.</li>
-          <li>Stop the server (Ctrl+C) and run this in the terminal, with your two values:</li>
+          <li><b>Hosted site:</b> edit the file <code className="rounded bg-stone-100 px-1">config.js</code> (in the site folder) and paste both values between the quotes.</li>
+          <li><b>On your computer or StackBlitz:</b> stop the server (Ctrl+C) and run this in the terminal, with your two values:</li>
         </ol>
         <pre className="mt-2 overflow-x-auto rounded-lg bg-neutral-900 p-3 text-xs text-green-300">{`printf "VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co\\nVITE_SUPABASE_ANON_KEY=YOUR-KEY\\n" > .env`}</pre>
         <p className="mt-3 text-sm text-stone-700">Then run <code className="rounded bg-stone-100 px-1">npm run dev</code> again and refresh.</p>

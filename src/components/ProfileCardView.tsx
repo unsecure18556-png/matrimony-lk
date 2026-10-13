@@ -30,10 +30,10 @@ export default function ProfileCardView({ card, sc, note, shortlisted, onToggleS
               )}
             </div>
           )}
-          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 p-3 text-white">
+          <div className="on-photo-scrim absolute inset-x-0 bottom-0 h-3/5" />
+          <div className="on-photo absolute inset-x-0 bottom-0 p-3">
             <p className="font-display text-lg font-semibold leading-tight drop-shadow">{card.full_name}{age ? `, ${age}` : ""}</p>
-            <p className="flex items-center gap-1 text-xs text-white/85"><Icon name="mapPin" size={12} />{card.district ?? "Sri Lanka"}</p>
+            <p className="flex items-center gap-1 text-xs text-white"><Icon name="mapPin" size={12} />{card.district ?? "Sri Lanka"}</p>
           </div>
         </Link>
         {card.face_verified && (
@@ -42,13 +42,13 @@ export default function ProfileCardView({ card, sc, note, shortlisted, onToggleS
           </span>
         )}
         {sc && (
-          <span title={matchLabel(sc.score)} className="absolute right-2 top-2 rounded-full bg-gold-100 px-2 py-0.5 text-[11px] font-bold text-gold-700 shadow">
+          <span title={matchLabel(sc.score)} className="photo-badge absolute right-2 top-2 rounded-full bg-gold-100 px-2 py-0.5 text-[11px] font-bold text-gold-700 shadow">
             {sc.score}% match
           </span>
         )}
         {onToggleShortlist && (
           <button onClick={onToggleShortlist} aria-label={shortlisted ? "Remove from shortlist" : "Add to shortlist"}
-            className={`absolute bottom-[4.2rem] right-2 flex h-9 w-9 items-center justify-center rounded-full shadow-md transition active:scale-90 ${shortlisted ? "bg-brand-600 text-white" : "bg-white/95 text-brand-600"}`}>
+            className={`absolute bottom-[4.2rem] right-2 flex h-9 w-9 items-center justify-center rounded-full shadow-md transition active:scale-90 ${shortlisted ? "bg-brand-600 text-white" : "photo-badge bg-white/95 text-brand-600"}`}>
             <Icon name="heart" size={18} filled={shortlisted} />
           </button>
         )}

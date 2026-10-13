@@ -59,7 +59,7 @@ input, select, textarea { font-size: 16px; }
 /* ---------- dark theme: remap surface/text variables, so every existing class adapts ---------- */
 html[data-theme="dark"] {
   color-scheme: dark;
-  --color-white: #20161c;
+  --surface: #20161c;
   --color-cream: #140c10;
   --color-ink: #f6e9ee;
   --color-stone-50: #281c23; --color-stone-100: #2e222a; --color-stone-200: #3b2d36; --color-stone-300: #4d3c47;
@@ -86,3 +86,16 @@ html[data-theme="dark"] .bg-green-50, html[data-theme="dark"] .bg-emerald-50 { b
 html[data-theme="dark"] .text-green-800, html[data-theme="dark"] .text-green-700 { color: #86efac; }
 html[data-theme="dark"] .bg-amber-50 { background: #3a2a0c; }
 html[data-theme="dark"] .text-amber-800, html[data-theme="dark"] .text-amber-900 { color: #fcd34d; }
+
+/* ---------- dark theme: "white" stays real white (for text on photos/buttons); only SURFACES use the dark colour ---------- */
+html[data-theme="dark"] .bg-white { background-color: var(--surface); }
+html[data-theme="dark"] .bg-white\/95 { background-color: color-mix(in srgb, var(--surface) 95%, transparent); }
+html[data-theme="dark"] .bg-white\/90 { background-color: color-mix(in srgb, var(--surface) 90%, transparent); }
+html[data-theme="dark"] .bg-white\/60 { background-color: color-mix(in srgb, var(--surface) 60%, transparent); }
+html[data-theme="dark"] .border-white,
+html[data-theme="dark"] .ring-white { --tw-ring-color: var(--surface); border-color: var(--surface); }
+/* badges that sit on photos keep a dark-on-light look so their text never blends in */
+html[data-theme="dark"] .photo-badge { background-color: rgba(255,255,255,.95); color: #962f46; }
+/* text drawn over photos is always white with a soft shadow, in light AND dark mode */
+.on-photo { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.65), 0 0 12px rgba(0,0,0,.35); }
+.on-photo-scrim { background: linear-gradient(to top, rgba(0,0,0,.85) 0%, rgba(0,0,0,.5) 45%, transparent 100%); }

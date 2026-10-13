@@ -32,12 +32,12 @@ function DiscoverCard({ card, score, rel, onInterest, onAccept, onHide }: {
             {card.hasPhoto && <span className="flex items-center gap-1 text-xs"><Icon name="lock" size={12} />Private</span>}
           </div>
         )}
-        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 p-3 text-white">
-          <p className="flex items-center gap-1 font-display text-lg font-semibold leading-tight">{card.full_name}{age ? `, ${age}` : ""}{card.face_verified && <Icon name="shieldCheck" size={16} className="text-emerald-300" />}</p>
-          <p className="truncate text-xs text-white/85">{[card.district, card.occupation].filter(Boolean).join(" · ")}</p>
+        <div className="on-photo-scrim absolute inset-x-0 bottom-0 h-3/5" />
+        <div className="on-photo absolute inset-x-0 bottom-0 p-3">
+          <p className="flex items-center gap-1 font-display text-lg font-semibold leading-tight">{card.full_name}{age ? `, ${age}` : ""}{card.face_verified && <Icon name="shieldCheck" size={16} className="text-emerald-300 drop-shadow" />}</p>
+          <p className="truncate text-xs text-white">{[card.district, card.occupation].filter(Boolean).join(" · ")}</p>
         </div>
-        <span className="absolute right-2 top-2 rounded-full bg-white/95 px-2 py-0.5 text-[11px] font-bold text-brand-700">{score}% compatible</span>
+        <span className="photo-badge absolute right-2 top-2 rounded-full bg-white/95 px-2 py-0.5 text-[11px] font-bold text-brand-700">{score}% compatible</span>
       </Link>
       <div className="flex gap-2 p-2.5">
         {rel === "none" && <button className={`${btn} bg-brand-600 text-white`} onClick={onInterest}>Interest</button>}

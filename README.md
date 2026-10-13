@@ -40,3 +40,10 @@ Home (feed: For You / Recent / Matches, infinite) | Discover | Matches (Recommen
   links only from admin-approved websites (Admin > Verified link websites).
 - Stories: 24h, filters, adjust, text, stickers, drawing, music from device, location, viewers list.
 - Phone OTP login was NOT added (needs a paid SMS provider). Email and Google sign-in only.
+
+## Hosting without a build step (Cloudflare Pages)
+The `site/` folder is the ready-to-serve website (already built). Steps:
+1. Edit `site/config.js` and paste your Supabase URL + anon key between the quotes.
+2. Cloudflare Pages > Settings > Build configuration: Build command = (empty), Build output directory = `site`.
+3. After changing the code, run `npm run build:site` and commit the new `site/` folder.
+For local development keep using `.env` and `npm run dev`.
